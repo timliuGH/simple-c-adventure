@@ -6,6 +6,9 @@
 #include <time.h>
 #include <unistd.h>
 
+#define ROOM_NAMES 10
+#define NUM_ROOMS 7
+
 enum bool {false, true};
 
 enum RoomType {START_ROOM, MID_ROOM, END_ROOM};
@@ -31,7 +34,8 @@ int main(int argc, char *argv[])
     /* Get process ID of current program*/
     int pid;
     pid = getpid();
-    /* Create string to name directory */
+
+    /* Create string to name a new directory */
     char *dir = NULL;
 
     /* Allocate space for directory's name */
@@ -46,11 +50,10 @@ int main(int argc, char *argv[])
     /* Make directory */
     mkdir(dir, 0755);
 
-
     /* Create array of numbers to be shuffled for randomization purposes */
-    int shuffled[10];
+    int shuffled[ROOM_NAMES];
     int i;
-    for (i = 0; i < 10; ++i)
+    for (i = 0; i < ROOM_NAMES; ++i)
         shuffled[i] = i;
 
     /* Shuffle array using Durstenfeld's Fisher-Yates shuffle */
@@ -64,17 +67,17 @@ int main(int argc, char *argv[])
         shuffled[j] = shuffled[i];
         shuffled[i] = tmp;
     }
-    /* Hold array of struct Rooms */
-    struct Room *rooms[7];
+    /* Make an array of struct Rooms */
+    struct Room *rooms[NUM_ROOMS];
 
-    for (i = 0; i < 7; ++i)
+    for (i = 0; i < NUM_ROOMS; ++i)
     {
         /* Allocate memory for a struct Room */
         rooms[i] = malloc(sizeof(struct Room));
         if (rooms[i] == 0)
             printf("malloc() failed\n");
 
-        /* Set numConnections to 0 */
+        /* Set room connections to 0 */
         rooms[i]->numConnections = 0;
 
         /* Allocate memory for the room's name */
@@ -93,7 +96,8 @@ int main(int argc, char *argv[])
         /* Clear memory for the room's filename */
         memset(rooms[i]->filename, '\0', 35);
 
-        /* Assign room names in order of 1st 7 numbers in shuffled array */
+        /* Assign room name and filename in order of 1st 7 numbers in 
+         * shuffled array */
         switch (shuffled[i])
         {
             case 0:
@@ -138,28 +142,29 @@ int main(int argc, char *argv[])
                 break;
         }
     }
-    /* Select 2 unique rooms to be START_ROOM and END_ROOM */
-    int randStart = rand() % 7;
-    int randEnd = rand() % 7;
-    while (randEnd == randStart)
-        randEnd = rand() % 7;
+    /* Select a room to be START_ROOM */
+    int randStart = rand() % NUM_ROOMS;
     rooms[randStart]->type = START_ROOM;
+
+    /* Select another room to be END_ROOM */
+    int randEnd = rand() % NUM_ROOMS;
+    while (randEnd == randStart)
+        randEnd = rand() % NUM_ROOMS;
     rooms[randEnd]->type = END_ROOM;
 
     /* Assign remaining rooms to be END_ROOMs */
-    for (i = 0; i < 7; ++i)
+    for (i = 0; i < NUM_ROOMS; ++i)
     {
         if (i != randStart && i != randEnd)
             rooms[i]->type = MID_ROOM;
     }
     /* Make random connections between rooms */
     while (IsGraphFull(rooms) != true)
-    {
         AddRandomConnection(rooms);
-    }
-    /* Iterate over each room */
+
+    /* Iterate over each room and make a file for each */
     int oFile;
-    for (i = 0; i < 7; ++i)
+    for (i = 0; i < NUM_ROOMS; ++i)
     {
         /* Open a new file to write to */
         oFile = open(rooms[i]->filename, O_WRONLY | O_CREAT, 0600);
@@ -210,89 +215,55 @@ int main(int argc, char *argv[])
         close(oFile);
     }
 
-    /*
-    printf("After connections:\n");
-    for (i = 0; i < 7; ++i)
-    {
-        printf("Name: %s, Type: %d, Connections: %d\n", rooms[i]->name, rooms[i]->type, rooms[i]->numConnections);
-    }
-    printf("List of connections:\n");
-    for (i = 0; i < 7; ++i)
-    {
-        printf("ROOM NAME: %s\n", rooms[i]->name);
-        int cons = rooms[i]->numConnections;
-        for (j = 0; j < cons; ++j)
-            printf("CONNECTION %d: %s\n", j + 1, rooms[i]->connections[j]->name);
-        printf("ROOM TYPE: ");
-        switch (rooms[i]->type)
-        {
-            case 0:
-                printf("START_ROOM\n");
-                break;
-            case 1:
-                printf("MID_ROOM\n");
-                break;
-            case 2:
-                printf("END_ROOM\n");
-                break;
-        }
-    }
-    */
-
-
-    /* DEBUG: Check if rooms have names and types */
-    /*
-    for (i = 1; i < 7; i++)
-        ConnectRooms(rooms[0], rooms[i]);
-    for (i = 0; i < 7; ++i)
-    {
-        printf("Name: %s, Type: %d, Connections: %d\n", rooms[i]->name, rooms[i]->type, rooms[i]->numConnections);
-    }
-    for (i = 0; i < rooms[0]->numConnections; i++)
-        printf("%s\n", rooms[0]->connections[i]->name);
-    struct Room *temp = GetRandomRoom(rooms);
-        printf("Random Name: %s, Type: %d, Connections: %d\n", temp->name, temp->type, temp->numConnections);
-    */
-
-    
     /* Free memory used to make directory name */
     free(dir);
 
-    /* Free dynamically allocated memory */
-    for (i = 0; i < 7; ++i)
+    /* Free other dynamically allocated memory used to make rooms */
+    for (i = 0; i < NUM_ROOMS; ++i)
     {
         free(rooms[i]->name);
         free(rooms[i]->filename);
         free(rooms[i]);
     }
-
     return 0;
 }
 
+/* This function takes an array of struct Room pointers and makes a 
+ * connection between two of them chosen randomly. The function uses other
+ * functions to check if the two rooms can be connected. */
 void AddRandomConnection(struct Room * arr[])
 {
+    /* Get two random rooms */
     struct Room *temp1;
     struct Room *temp2;
     temp1 = GetRandomRoom(arr);
     temp2 = GetRandomRoom(arr);
+
+    /* Check if chosen rooms are the same or already connected */
     while (IsSameRoom(temp1, temp2) == true ||
            AlreadyConnected(temp1, temp2) == true)
         temp2 = GetRandomRoom(arr);
+
+    /* Connect the two rooms */
     ConnectRooms(temp1, temp2);
 }
 
+/* This function takes an array of struct Room pointers and returns one
+ * of the struct Rooms randomly. The function checks if chosen rooms
+ * have space to make connections. */
 struct Room *GetRandomRoom(struct Room * arr[])
 {
-    /* Get random number from 0 to 6 representing each room in arr */
+    /* Get number from 0 to NUM_ROOMS - 1 representing each room in arr */
     int num;
-    num = rand() % 7;
+    num = rand() % NUM_ROOMS;
 
     /* Check that the chosen room has space to make connections */
     while (arr[num]->numConnections >= 6)
-        num = rand() % 7;
+        num = rand() % NUM_ROOMS;
     return arr[num];
 }
 
+/* This function does the actual connecting between two rooms. */
 void ConnectRooms(struct Room *x, struct Room *y)
 {
     /* Add the rooms to each room's array of connections */
@@ -304,12 +275,14 @@ void ConnectRooms(struct Room *x, struct Room *y)
     y->numConnections++;
 }
 
+/* This function checks if two rooms are the same based on room names. */
 enum bool IsSameRoom(struct Room *x, struct Room *y)
 {
     /* Check if room names match */
     return strcmp(x->name, y->name) == 0;
 }
 
+/* This function checks if two rooms are already connected. */
 enum bool AlreadyConnected(struct Room *x, struct Room *y)
 {
     /* Iterate over connections to room x */
@@ -323,11 +296,13 @@ enum bool AlreadyConnected(struct Room *x, struct Room *y)
     return false;
 }
 
+/* This function takes an array of struct Room pointers and checks if all
+ * the rooms have at least 3 connections. */
 enum bool IsGraphFull(struct Room * arr[])
 {
     int i;
     /* Iterate over all rooms */
-    for (i = 0; i < 7; ++i)
+    for (i = 0; i < NUM_ROOMS; ++i)
     {
         /* Check if room has at least 3 connections */
         if (arr[i]->numConnections < 3)
