@@ -2,6 +2,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <time.h>
+#include <unistd.h>
 
 enum bool {false, true};
 
@@ -167,10 +170,9 @@ int main(int argc, char *argv[])
             exit(1);
         }
         /* Write room name */
-        ssize_t outData;
-        outData = write(oFile, "ROOM NAME: ", 11 * sizeof(char));
-        outData = write(oFile, rooms[i]->name, 
-                        strlen(rooms[i]->name) * sizeof(char));
+        write(oFile, "ROOM NAME: ", 11 * sizeof(char));
+        write(oFile, rooms[i]->name, strlen(rooms[i]->name)*sizeof(char));
+
         /* Iterate over each room's connections */
         int numCons = rooms[i]->numConnections;
         for (j = 0; j < numCons; ++j)
@@ -181,9 +183,9 @@ int main(int argc, char *argv[])
                 printf("malloc() failed\n");
             memset(str, '\0', 20);
             sprintf(str, "\nCONNECTION %d: ", j + 1);
-            outData = write(oFile, str, strlen(str) * sizeof(char));
+            write(oFile, str, strlen(str) * sizeof(char));
             free(str);
-            outData = write(oFile, rooms[i]->connections[j]->name,
+            write(oFile, rooms[i]->connections[j]->name,
                     strlen(rooms[i]->connections[j]->name) * sizeof(char));
         }
         /* Write each room's room type */
@@ -203,8 +205,9 @@ int main(int argc, char *argv[])
                 sprintf(typeStr, "\nROOM TYPE: END_ROOM\n");
                 break;
         }
-        outData = write(oFile, typeStr, strlen(typeStr) * sizeof(char));
+        write(oFile, typeStr, strlen(typeStr) * sizeof(char));
         free(typeStr);
+        close(oFile);
     }
 
     /*
