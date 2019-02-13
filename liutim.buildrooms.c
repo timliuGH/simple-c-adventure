@@ -152,7 +152,7 @@ int main(int argc, char *argv[])
         randEnd = rand() % NUM_ROOMS;
     rooms[randEnd]->type = END_ROOM;
 
-    /* Assign remaining rooms to be END_ROOMs */
+    /* Assign remaining rooms to be MID_ROOMs */
     for (i = 0; i < NUM_ROOMS; ++i)
     {
         if (i != randStart && i != randEnd)
